@@ -5,11 +5,11 @@
 #include <ArduinoOTA.h>
 #include <ESPmDNS.h>
 
-
-#include <SPIFFS.h>
+#include <FS.h>
 
 #include <Debounce.h>
 #include <ArduinoJson.h>
+
 
 // SKETCH BEGIN
 AsyncWebServer server(80);
@@ -119,17 +119,12 @@ void setup()
   pinMode(BUTTON0, INPUT);
   pinMode(BUTTON1, INPUT);
 
-
-///////////////websocket
-
 ws.onEvent(onWsEvent);
 server.addHandler(&ws);
 
 server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
   request->send(200, "text/plain", String(ESP.getFreeHeap()));
 });
-
-SPIFFS.begin();
 
 // server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
 //   request->send(SPIFFS, "/index.htm");
@@ -153,6 +148,8 @@ events.onConnect([](AsyncEventSourceClient *client){
   });
 
  server.begin();
+
+//server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
 
   digitalWrite(LED_BUILTIN, HIGH);
   delay(3000);
