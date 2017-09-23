@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8" />
+
+  <title>eightLeds</title>
+
+  <script language="javascript" type="text/javascript">
+
+    var wsUri = "ws://192.168.4.1/ws";
+
+    var led0, led1, message;
+
+    function init() {
+      led0 = document.getElementById("led0");
+      led1 = document.getElementById("led1");
+
+      led0.addEventListener('click', function (event) {changeState(0)});
+      led1.addEventListener('click', function (event) {changeState(1)});
+
+      startWebSocket();
+    }
+
+    function startWebSocket() {
+
+      websocket = new WebSocket(wsUri);
+
+      websocket.onopen = function(evt) {
+        onOpen(evt)
+      };
+      websocket.onclose = function(evt) {
+        onClose(evt)
+      };
+      websocket.onmessage = function(evt) {
+        onMessage(evt)
+      };
+      websocket.onerror = function(evt) {
+        onError(evt)
+      };
+    }
+
+    function onOpen(evt) {
+      console.log("ws CONNECTED");
+    }
+
+    function onClose(evt) {
+      console.log("ws DISCONNECTED");
+    }
+
+    function onMessage(evt) {
+      console.log(evt.data);
+      updateLedsState(JSON.parse(evt.data));
+      // writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data + '</span>');
+    }
+
+    function onError(evt) {
+      console.log("ws ERROR" + evt.data);
+    }
+
+    function changeState(data) {
+      websocket.send(data);
+    }
+
+    function updateLedsState(data){
+
+      if (data["led0"]==1){
+
+        led0.classList.add('green');
+      } else {
+        led0.classList.remove('green');
+      }
+
+      if (data["led1"]==1){
+        led1.classList.add('red');
+      } else {
+        led1.classList.remove('red');
+      }
+
+    }
+
+    function writeToScreen(message) {
+      var pre = document.createElement("p");
+      pre.style.wordWrap = "break-word";
+      pre.innerHTML = message;
+      output.appendChild(pre);
+    }
+
+    window.addEventListener("load", init, false);
+  </script>
+
+  <style>
+    .red{
+      background-color: red !important;
+    }
+
+    .green{
+      background-color: green !important;
+    }
+
+    .led {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: gray;
+      margin: 10px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <h2>eightLeds</h2>
+
+  <div id="output"></div>
+
+led #0
+  <div id="led0" class="led"></div>
+
+led #1
+  <div id="led1" class="led"></div>
+
+<div id="message"></div>
+
+</body>
