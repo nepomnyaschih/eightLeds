@@ -6,12 +6,12 @@
 #include <ESPmDNS.h>
 
 #include <FS.h>
+#include <SPIFFS.h>
 
 #include <Debounce.h>
 #include <ArduinoJson.h>
 
 
-// SKETCH BEGIN
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 AsyncEventSource events("/events");
@@ -33,6 +33,15 @@ Debounce debouncer1 = Debounce( 20 , BUTTON1 );
 bool state0 = false;
 bool state1 = false;
 
+void deleteFile(fs::FS &fs, const char * path) {
+  // Serial.printf("Deleting file: %s\n", path);
+  if (fs.remove(path)) {
+    // Serial.println("File deleted");
+  } else {
+    // Serial.println("Delete failed");
+  }
+}
+
 void sendDataWs()
 {
     DynamicJsonBuffer jsonBuffer;
@@ -47,9 +56,9 @@ void sendDataWs()
     }
 }
 
-void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
-
-Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
+void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len)
+{
+  Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
 
   if(type == WS_EVT_CONNECT){
     Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
@@ -101,61 +110,72 @@ Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
 
 void setup()
 {
-  Serial.begin(115200);
-  Serial.println();
-  Serial.print("Start...");
-
-  WiFi.softAP(ssid, password);
-
-  IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
-
-
-  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(LED0, OUTPUT);
   pinMode(LED1, OUTPUT);
 
   pinMode(BUTTON0, INPUT);
   pinMode(BUTTON1, INPUT);
 
-ws.onEvent(onWsEvent);
-server.addHandler(&ws);
+  Serial.begin(115200);
+  Serial.println();
+  Serial.print("Start...");
 
-server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
-  request->send(200, "text/plain", String(ESP.getFreeHeap()));
-});
+  WiFi.softAP(ssid, password);
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
 
-// server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-//   request->send(SPIFFS, "/index.htm");
-// });
-
-server.onNotFound([](AsyncWebServerRequest *request){
-  Serial.printf("NOT_FOUND: ");
-  if(request->method() == HTTP_GET){
-    Serial.printf("GET");
+  if (!SPIFFS.begin()) {
+    Serial.println("SPIFFS Mount Failed");
+    return;
   }
-  request->send(404);
-});
 
-events.onConnect([](AsyncEventSourceClient *client){
-    if(client->lastId()){
-      Serial.printf("Client reconnected! Last message ID that it gat is: %u\n", client->lastId());
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+
+  server.on("/delete_index", HTTP_GET, [](AsyncWebServerRequest *request){
+    deleteFile(SPIFFS, "/index.html");
+    request->send(200, "text/plain", "index.html deleted");
+  });
+
+  server.on("/sys", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/html", "<form enctype='multipart/form-data' method='POST'><input type='file' name='fileToUpload' id='fileToUpload'><input type='submit' name='submit'></form><a href='http://192.168.4.1/delete_index'>DELETE index.html</a>");
+  });
+
+  server.onNotFound([](AsyncWebServerRequest *request){
+      request->send(404);
+  });
+
+  server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
+
+    if(!index){
+        Serial.printf("UploadStart: %s\n", filename.c_str());
     }
-    //send event with message "hello!", id current millis
-    // and set reconnect delay to 1 second
+
+    File f = SPIFFS.open("/index.html", "a+");
+    for(size_t i=0; i<len; i++){
+      f.write(data[i]);
+    }
+
+    f.seek(0);
+    f.close();
+
+    if(final){
+      Serial.printf("UploadEnd: %s, %u B\n", filename.c_str(), index+len);
+    }
+  });
+
+  events.onConnect([](AsyncEventSourceClient *client){
     client->send("hello!",NULL,millis(),1000);
   });
 
  server.begin();
 
-//server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
-
   digitalWrite(LED_BUILTIN, HIGH);
   delay(3000);
   digitalWrite(LED_BUILTIN, LOW);
 
-  Serial.print("Started!");
+  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");;
 }
 
 void loop()

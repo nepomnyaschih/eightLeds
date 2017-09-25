@@ -1,0 +1,39 @@
+
+software:
+1. установаить atom ide https://atom.io/
+2. установить platform io http://platformio.org/get-started/ide?install=atom
+3.
+    1 вариант: установить git и клонировать репозиторий https://github.com/nepomnyaschih/eightLeds.git
+    2 вариант: скачать проект в архиве https://github.com/nepomnyaschih/eightLeds/archive/master.zip
+
+platformio выбрал в качестве IDE по нескольким причинам:
+  1.нормальный редактор atom (есть плагины в том числе и гит)
+  2.на моей ubuntu всё так же как на винде
+  3.очень понравилось ставить зависимости библиотек, при билде всё само качается.
+  4.хороший вики, большое комьюнити.
+
+hardware:
+1. распиновку смотреть в NODE32S_pinout.png или в любом другом месте
+2.
+  2.1 светодиоды:
+      #define LED_BUILTIN 2 - встроенный GPIO2
+      #define LED0 0 - GPIO0
+      #define LED1 4 - GPIO4
+      подключать так (к соответствующим пинам):  https://www.arduino.cc/en/Tutorial/Blink
+
+  2.2 кнопки:
+      #define BUTTON0 19 - GPIO19
+      #define BUTTON1 18 - GPIO18
+      подключать так (к соответствующим пинам): https://www.arduino.cc/en/Tutorial/Button
+
+  на счёт резисторов я не уверен. я поставил какие были под рукой. по-хорошему надо посчитать.
+
+build & run:
+после успешного билда, нужно загрузить файл index.html этот файл еспэха отдаёт клиенту
+для этого нужно подключиться к есп
+  const char* ssid = "esp32test";
+  const char* password = "12345678";
+
+перейти по адресу http://192.168.4.1/sys загрузить index.html из папки data текущего проекта
+
+для работы просто открывать http://192.168.4.1/
