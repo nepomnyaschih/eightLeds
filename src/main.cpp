@@ -14,6 +14,10 @@
 #include <FS.h>
 #include <SPIFFS.h>
 
+//SD карта инфа тут https://github.com/espressif/arduino-esp32/tree/master/libraries/SD
+#include <SD.h>
+#include <SPI.h>
+
 #include <Debounce.h> //дребезг контактов кнопки
 #include <ArduinoJson.h> //json-формат
 
@@ -149,6 +153,29 @@ void setup()
     return;
   }
 
+  //работа с SD
+  if(!SD.begin()){
+        Serial.println("Card Mount Failed");
+        return;
+    }
+    uint8_t cardType = SD.cardType();
+
+    if(cardType == CARD_NONE){
+        Serial.println("No SD card attached");
+        return;
+    }
+
+    Serial.print("SD Card Type: ");
+    if(cardType == CARD_MMC){
+        Serial.println("MMC");
+    } else if(cardType == CARD_SD){
+        Serial.println("SDSC");
+    } else if(cardType == CARD_SDHC){
+        Serial.println("SDHC");
+    } else {
+        Serial.println("UNKNOWN");
+    }
+
   //запуск обработчиков событий вебсокетов
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
@@ -170,7 +197,8 @@ void setup()
   });
 
   //обработчик загрузки файлов
-  server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
+  server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final)
+  {
 
     if(!index){
       Serial.printf("UploadStart: %s\n", filename.c_str());
@@ -199,7 +227,7 @@ void setup()
 
 
    //установка index.html умолчательным файлом для сервера
-  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");;
+  server.serveStatic("/", SD, "/").setDefaultFile("index.html");;
 }
 
 void loop()
